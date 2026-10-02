@@ -1,3 +1,21 @@
 spring:
   application:
     name: inventoryService
+
+  liquibase:
+    enabled: true
+    change-log: classpath:db/changelog/001-create-products.sql
+
+  grpc:
+    server:
+      enabled: true
+      port: ${GRPC_SERVER_PORT:9090}
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/products}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
