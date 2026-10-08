@@ -1,9 +1,10 @@
 package ru.microservicesApp.orderService.controller;
 
-import java.net.URI;
+import java.util.UUID;
+
+import jakarta.validation.Valid;
 import java.util.List;
 
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -34,22 +35,22 @@ public class UserController {
     }
 
     @GetMapping("/{user_id}")
-    public UserResponse getUserById(@PathVariable("user_id") Long userId) {
+    public UserResponse getUserById(@PathVariable("user_id") UUID userId) {
         return userMapper.toResponse(userService.getUserById(userId));
     }
 
     @PostMapping
-    public void createUser(@RequestBody UserRequest request) {
+    public void createUser(@Valid @RequestBody UserRequest request) {
         UserResponse response = userMapper.toResponse(userService.createUser(userMapper.toEntity(request)));
     }
 
     @PutMapping("/{user_id}")
-    public void updateUser(@PathVariable("user_id") Long userId, @RequestBody UserRequest request) {
+    public void updateUser(@PathVariable("user_id") UUID userId, @Valid @RequestBody UserRequest request) {
         userService.updateUser(userId, userMapper.toEntity(request));
     }
 
     @DeleteMapping("/{user_id}")
-    public void deleteUser(@PathVariable("user_id") Long userId) {
+    public void deleteUser(@PathVariable("user_id") UUID userId) {
         userService.deleteUser(userId);
     }
 }

@@ -1,6 +1,9 @@
 package ru.microservicesApp.orderService.mapper;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.springframework.stereotype.Component;
+import ru.microservicesApp.orderService.dto.auth.RegisterRequest;
 import ru.microservicesApp.orderService.dto.user.UserRequest;
 import ru.microservicesApp.orderService.dto.user.UserResponse;
 import ru.microservicesApp.orderService.entity.User;
@@ -13,7 +16,16 @@ public class UserMapper {
         user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPassword(request.password());
-        user.setRole(request.role() == null ? Role.ROLE_USER : request.role());
+        user.setRoles(new HashSet<>(request.roles() == null ? Set.of(Role.ROLE_USER) : request.roles()));
+        return user;
+    }
+
+    public User toEntity(RegisterRequest request) {
+        User user = new User();
+        user.setUsername(request.username());
+        user.setEmail(request.email());
+        user.setPassword(request.password());
+        user.setRoles(new HashSet<>(Set.of(Role.ROLE_USER)));
         return user;
     }
 
@@ -21,10 +33,11 @@ public class UserMapper {
         user.setUsername(updatedUser.getUsername());
         user.setEmail(updatedUser.getEmail());
         user.setPassword(encodedPassword);
-        user.setRole(updatedUser.getRole());
+        user.getRoles().clear();
+        user.getRoles().addAll(updatedUser.getRoles());
     }
 
     public UserResponse toResponse(User user) {
-        return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), user.getRole());
+        return new UserResponse(user.getId(), user.getUsername(), user.getEmail(), Set.copyOf(user.getRoles()));
     }
 }

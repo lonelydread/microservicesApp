@@ -1,9 +1,15 @@
 package ru.microservicesApp.orderService.dto.user;
 
+import java.util.Set;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import ru.microservicesApp.orderService.entity.Role;
 
-public record UserRequest(String username,
-                          String email,
-                          String password,
-                          Role role) {
+public record UserRequest(
+        @NotBlank @Size(max = 255) String username,
+        @NotBlank @Email @Size(max = 255) String email,
+        @NotBlank @Size(min = 8) String password,
+        @Size(min = 1) Set<@NotNull Role> roles) {
 }

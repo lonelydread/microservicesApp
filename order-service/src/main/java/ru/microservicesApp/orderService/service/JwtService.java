@@ -2,12 +2,9 @@ package ru.microservicesApp.orderService.service;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Objects;
 import java.util.UUID;
 
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.Positive;
-import org.hibernate.validator.constraints.time.DurationMax;
-import org.hibernate.validator.constraints.time.DurationMin;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -24,27 +21,41 @@ public class JwtService {
     private final JwtEncoder jwtEncoder;
     private final String issuer;
     private final Duration accessTokenTtl;
+    private final Duration refreshTokenTtl;
 
     public JwtService(JwtEncoder jwtEncoder,
                       @Value("${security.jwt.issuer:order-service}") String issuer,
-                      @DurationMin(minutes = 15)
-                      @DurationMax(hours = 1)
-                      @Value("${security.jwt.access-token-ttl:15m}") Duration accessTokenTtl) {
+                      @Value("${security.jwt.access-token-ttl:15m}") Duration accessTokenTtl,
+                      @Value("${security.jwt.refresh-token-ttl:7d}") Duration refreshTokenTtl) {
         this.jwtEncoder = jwtEncoder;
         this.issuer = issuer;
         this.accessTokenTtl = accessTokenTtl;
+        this.refreshTokenTtl = refreshTokenTtl;
+    }
+    public AuthResponse generateTokenPair(Authentication authentication, UUID userId) {
+        Instant now = Instant.now();
+        JwtClaimsSet refreshClaims = JwtClaimsSet.builder().issuer(issuer)
+                .subject(userId.toString()).issuedAt(now).expiresAt(now.plus(refreshTokenTtl))
+                .id(UUID.randomUUID().toString()).claim("token_use", "refresh")
+                .claim("username", authentication.getName()).build();
+        return refreshAccessToken(authentication, userId, encode(refreshClaims));
     }
 
-    public AuthResponse generateToken(Authentication authentication) {
+    public AuthResponse refreshAccessToken(Authentication authentication, UUID userId, String refreshToken) {
         Instant now = Instant.now();
-        JwtClaimsSet claims = JwtClaimsSet.builder().issuer(issuer)
-                .subject(authentication.getName()).issuedAt(now).expiresAt(now.plus(accessTokenTtl))
-                .id(UUID.randomUUID().toString())
+        JwtClaimsSet accessClaims = JwtClaimsSet.builder().issuer(issuer)
+                .subject(userId.toString()).claim("username", authentication.getName()).issuedAt(now).expiresAt(now.plus(accessTokenTtl))
+                .id(UUID.randomUUID().toString()).claim("token_use", "access")
                 .claim("roles", authentication.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority).filter(authority -> authority.startsWith("ROLE_")).toList())
+                        .map(GrantedAuthority::getAuthority).filter(Objects::nonNull)
+                        .filter(authority -> authority.startsWith("ROLE_"))
+                        .toList())
                 .build();
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(
+        return new AuthResponse(encode(accessClaims), "Bearer", accessTokenTtl.toSeconds(), refreshToken);
+    }
+
+    private String encode(JwtClaimsSet claims) {
+        return jwtEncoder.encode(JwtEncoderParameters.from(
                 JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
-        return new AuthResponse(token, "Bearer", accessTokenTtl.toSeconds());
     }
 }

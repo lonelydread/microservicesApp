@@ -6,6 +6,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.microservicesApp.orderService.repository.UserRepository;
+import ru.microservicesApp.orderService.entity.Role;
 
 @Service
 @Transactional(readOnly = true)
@@ -20,8 +21,8 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) {
         var user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid credentials"));
-        String role = user.getRole() == null ? "ROLE_USER" : user.getRole().name();
+        String[] roles = user.getRoles().stream().map(Role::name).toArray(String[]::new);
         return org.springframework.security.core.userdetails.User.withUsername(user.getUsername())
-                .password(user.getPassword()).authorities(role).build();
+                .password(user.getPassword()).authorities(roles).build();
     }
 }

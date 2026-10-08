@@ -1,8 +1,9 @@
 package ru.microservicesApp.orderService.service;
 
+import java.util.UUID;
+
 import java.util.List;
 
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +29,7 @@ public class UserService {
         return userRepository.findAll();
     }
 
-    public User getUserById(Long userId) {
+    public User getUserById(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
     }
@@ -36,25 +37,22 @@ public class UserService {
     @Transactional
     public User createUser(User user) {
         user.setId(null);
-        user.setPassword(encodePassword(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
 
     @Transactional
-    public User updateUser(Long userId, User updatedUser) {
+    public User updateUser(UUID userId, User updatedUser) {
         User user = getUserById(userId);
-        String encodedPassword = encodePassword(updatedUser.getPassword());
+        String encodedPassword = passwordEncoder.encode(updatedUser.getPassword());
         userMapper.updateEntity(user, updatedUser, encodedPassword);
         return userRepository.save(user);
     }
 
     @Transactional
-    public void deleteUser(Long userId) {
+    public void deleteUser(UUID userId) {
         User user = getUserById(userId);
         userRepository.delete(user);
     }
 
-    private String encodePassword(@NotBlank String password) {
-        return passwordEncoder.encode(password);
-    }
 }
