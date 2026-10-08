@@ -1,6 +1,21 @@
 spring:
   application:
     name: orderService
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      acks: all
+      properties:
+        "[enable.idempotence]": true
+        "[spring.json.add.type.headers]": false
+        "[max.block.ms]": 5000
+        "[request.timeout.ms]": 5000
+        "[delivery.timeout.ms]": 15000
+  mvc:
+    async:
+      request-timeout: 30s
   grpc:
     client:
       channel:
@@ -21,3 +36,7 @@ inventory:
 
 server:
   port: ${SERVER_PORT:8081}
+
+orders:
+  kafka:
+    topic: ${ORDER_CREATED_TOPIC:orders.created}
