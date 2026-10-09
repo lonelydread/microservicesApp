@@ -1,6 +1,9 @@
 package ru.microservicesApp.orderService.grpc;
 
+import java.math.BigDecimal;
 import java.net.InetSocketAddress;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
@@ -26,10 +29,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class InventoryGrpcClientTests {
     private Server server;
+    private ValidatorFactory validatorFactory;
     private ApplicationContextRunner contextRunner;
 
     @BeforeEach
     void setUp() throws Exception {
+        validatorFactory = Validation.buildDefaultValidatorFactory();
         server = NettyServerBuilder.forAddress(new InetSocketAddress("127.0.0.1", 0))
                 .addService(new InventoryServiceGrpc.InventoryServiceImplBase() {
                     @Override
@@ -43,9 +48,18 @@ class InventoryGrpcClientTests {
                             // Keep the RPC open until the client's deadline expires.
                         } else if (request.getProductId() == 10) {
                             observer.onError(Status.INTERNAL.asRuntimeException());
+                        } else if (request.getProductId() == 11) {
+                            observer.onNext(CheckAvailabilityResponse.newBuilder().setAvailable(true)
+                                    .setPrice("not-a-number").setSale("0").build());
+                            observer.onCompleted();
+                        } else if (request.getProductId() == 12) {
+                            observer.onNext(CheckAvailabilityResponse.newBuilder().setAvailable(true)
+                                    .setPrice("25.50").setSale("100.01").build());
+                            observer.onCompleted();
                         } else {
                             observer.onNext(CheckAvailabilityResponse.newBuilder()
-                                    .setAvailable(request.getProductId() == 7 && request.getQuantity() <= 5).build());
+                                    .setAvailable(request.getProductId() == 7 && request.getQuantity() <= 5)
+                                    .setPrice("99999999999999999.99").setSale("12.50").build());
                             observer.onCompleted();
                         }
                     }
@@ -62,6 +76,7 @@ class InventoryGrpcClientTests {
     @AfterEach
     void tearDown() throws Exception {
         server.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+        validatorFactory.close();
     }
 
     @Test
@@ -70,8 +85,11 @@ class InventoryGrpcClientTests {
             assertNull(context.getStartupFailure());
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            assertTrue(client.checkAvailability(7, 5));
-            assertFalse(client.checkAvailability(7, 6));
+            var response = client.checkAvailability(7, 5);
+            assertTrue(response.available());
+            assertEquals(new BigDecimal("99999999999999999.99"), response.price());
+            assertEquals(new BigDecimal("12.50"), response.sale());
+            assertFalse(client.checkAvailability(7, 6).available());
         });
     }
 
@@ -106,14 +124,17 @@ class InventoryGrpcClientTests {
     }
 
     @Test
-    void rejectsNonPositiveTimeout() {
-        assertThrows(IllegalArgumentException.class, () -> new InventoryGrpcClient(null, Duration.ZERO));
-        assertThrows(IllegalArgumentException.class,
-                () -> new InventoryGrpcClient(null, Duration.ofSeconds(-1)));
+    void rejectsMalformedAndOutOfRangeInventoryPricing() {
+        contextRunner.run(context -> {
+            InventoryGrpcClient client = client(context.getBean(
+                    InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
+            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(11, 1));
+            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(12, 1));
+        });
     }
 
     private InventoryGrpcClient client(InventoryServiceGrpc.InventoryServiceBlockingStub stub, Duration timeout) {
-        return new InventoryGrpcClient(stub, timeout);
+        return new InventoryGrpcClient(stub, timeout, validatorFactory.getValidator());
     }
 
     private void assertStatus(Status.Code expected, org.junit.jupiter.api.function.Executable call) {
