@@ -5,6 +5,7 @@ import java.util.Optional;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import org.springframework.aop.framework.ProxyFactory;
+import org.springframework.grpc.server.exception.GrpcExceptionHandlerInterceptor;
 import org.springframework.validation.beanvalidation.MethodValidationInterceptor;
 import java.util.concurrent.TimeUnit;
 
@@ -18,9 +19,11 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import ru.microservicesApp.inventoryService.entity.Product;
+import ru.microservicesApp.inventoryService.exception.GlobalExceptionHandler;
 import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityRequest;
 import ru.microservicesApp.inventoryService.grpc.generated.InventoryServiceGrpc;
 import ru.microservicesApp.inventoryService.repository.ProductRepository;
+import ru.microservicesApp.inventoryService.mapper.ProductAvailabilityMapper;
 import ru.microservicesApp.inventoryService.service.ProductService;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -37,13 +40,14 @@ class InventoryGrpcServiceTests {
     void startServer() throws Exception {
         repository = mock(ProductRepository.class);
         validatorFactory = Validation.buildDefaultValidatorFactory();
-        ProxyFactory proxyFactory = new ProxyFactory(new ProductService(repository));
+        ProxyFactory proxyFactory = new ProxyFactory(new ProductService(repository, new ProductAvailabilityMapper()));
         proxyFactory.setProxyTargetClass(true);
         proxyFactory.addAdvice(new MethodValidationInterceptor(validatorFactory.getValidator()));
         ProductService productService = (ProductService) proxyFactory.getProxy();
         String name = InProcessServerBuilder.generateName();
         server = InProcessServerBuilder.forName(name).directExecutor()
-                .addService(new InventoryGrpcService(productService)).build().start();
+                .intercept(new GrpcExceptionHandlerInterceptor(new GlobalExceptionHandler()))
+                .addService(new InventoryGrpcService(productService, new ProductAvailabilityMapper())).build().start();
         channel = InProcessChannelBuilder.forName(name).directExecutor().build();
         stub = InventoryServiceGrpc.newBlockingStub(channel).withDeadlineAfter(5, TimeUnit.SECONDS);
     }

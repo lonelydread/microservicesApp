@@ -2,25 +2,27 @@ package ru.microservicesApp.inventoryService.service;
 
 import java.util.List;
 
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
-import org.springframework.http.HttpStatus;
+import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.server.ResponseStatusException;
-import ru.microservicesApp.inventoryService.dto.product.ProductAvailability;
+import ru.microservicesApp.inventoryService.dto.product.ProductAvailabilityRequest;
+import ru.microservicesApp.inventoryService.dto.product.ProductAvailabilityResponse;
 import ru.microservicesApp.inventoryService.entity.Product;
+import ru.microservicesApp.inventoryService.exception.ProductNotFoundException;
 import ru.microservicesApp.inventoryService.repository.ProductRepository;
+import ru.microservicesApp.inventoryService.mapper.ProductAvailabilityMapper;
 
 @Service
 @Transactional(readOnly = true)
 @Validated
 public class ProductService {
     private final ProductRepository productRepository;
+    private final ProductAvailabilityMapper productAvailabilityMapper;
 
-    public ProductService(ProductRepository productRepository) {
+    public ProductService(ProductRepository productRepository, ProductAvailabilityMapper productAvailabilityMapper) {
         this.productRepository = productRepository;
+        this.productAvailabilityMapper = productAvailabilityMapper;
     }
 
     public List<Product> getAllProducts() {
@@ -29,8 +31,7 @@ public class ProductService {
 
     public Product getProductById(Long productId) {
         return productRepository.findById(productId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND, "product not found"));
+                .orElseThrow(() -> new ProductNotFoundException(productId));
     }
 
     @Transactional
@@ -44,12 +45,9 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    public ProductAvailability checkAvailability(
-            @NotNull @Positive Long productId,
-            @Positive int requestedQuantity) {
-
-        Product product = getProductById(productId);
-        boolean available = product.getQuantity() != null && product.getQuantity() >= requestedQuantity;
-        return new ProductAvailability(available, product.getPrice(), product.getSale());
+    public ProductAvailabilityResponse checkAvailability(@Valid ProductAvailabilityRequest request) {
+        Product product = getProductById(request.productId());
+        boolean available = product.getQuantity() != null && product.getQuantity() >= request.quantity();
+        return productAvailabilityMapper.toResponse(product, available);
     }
 }

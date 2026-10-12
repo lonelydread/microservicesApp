@@ -2,6 +2,7 @@ package ru.microservicesApp.inventoryService.controller;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -11,11 +12,14 @@ import jakarta.validation.ValidatorFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import ru.microservicesApp.inventoryService.dto.product.ProductRequest;
 import ru.microservicesApp.inventoryService.entity.Product;
+import ru.microservicesApp.inventoryService.exception.GlobalExceptionHandler;
+import ru.microservicesApp.inventoryService.exception.ProductNotFoundException;
 import ru.microservicesApp.inventoryService.mapper.ProductMapper;
 import ru.microservicesApp.inventoryService.service.ProductService;
 
@@ -26,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ProductValidationTests {
+    private static final UUID PRODUCT_ID = UUID.randomUUID();
     private static ValidatorFactory validatorFactory;
     private static Validator validator;
 
@@ -105,7 +110,11 @@ class ProductValidationTests {
         ProductService service = mock(ProductService.class);
         mvc(service).perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\" \",\"price\":-1,\"sale\":0,\"quantity\":-1}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Validation failed"))
+                .andExpect(jsonPath("$.errors.name").exists())
+                .andExpect(jsonPath("$.errors.price").exists())
+                .andExpect(jsonPath("$.errors.quantity").exists());
         verifyNoInteractions(service);
     }
 
@@ -130,7 +139,7 @@ class ProductValidationTests {
         when(service.createProduct(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
             assertEquals(new BigDecimal("12.50"), product.getSale());
-            product.setId(7L);
+            product.setId(PRODUCT_ID);
             return product;
         });
         mvc(service).perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
@@ -142,7 +151,7 @@ class ProductValidationTests {
     @Test
     void includesSaleInSingleProductAndProductListResponses() throws Exception {
         Product product = new Product();
-        product.setId(7L);
+        product.setId(PRODUCT_ID);
         product.setSale(new BigDecimal("12.50"));
         ProductService service = mock(ProductService.class);
         when(service.getProductById(7L)).thenReturn(product);
@@ -177,6 +186,37 @@ class ProductValidationTests {
         verifyNoInteractions(service);
     }
 
+    @Test
+    void returnsNotFoundForMissingProductsOnGetAndDelete() throws Exception {
+        ProductService service = mock(ProductService.class);
+        when(service.getProductById(7L)).thenThrow(new ProductNotFoundException(7L));
+        doThrow(new ProductNotFoundException(7L)).when(service).deleteProduct(7L);
+        MockMvc mvc = mvc(service);
+        mvc.perform(get("/api/products/7")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Product with id 7 not found"));
+        mvc.perform(delete("/api/products/7")).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Product with id 7 not found"));
+    }
+
+    @Test
+    void returnsConflictWithoutExposingDatabaseDetails() throws Exception {
+        ProductService service = mock(ProductService.class);
+        when(service.createProduct(any(Product.class)))
+                .thenThrow(new DataIntegrityViolationException("Private database constraint details"));
+        mvc(service).perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Keyboard\",\"price\":25.50,\"sale\":0,\"quantity\":3}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("Data conflicts with database constraints"));
+    }
+
+    @Test
+    void returnsInternalServerErrorWithoutExposingImplementationDetails() throws Exception {
+        ProductService service = mock(ProductService.class);
+        when(service.getAllProducts()).thenThrow(new IllegalStateException("Private database details"));
+        mvc(service).perform(get("/api/products")).andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.message").value("Internal server error"));
+    }
+
     private Set<String> invalidFields(ProductRequest request) {
         return validator.validate(request).stream()
                 .map(violation -> violation.getPropertyPath().toString())
@@ -184,6 +224,7 @@ class ProductValidationTests {
     }
 
     private MockMvc mvc(ProductService service) {
-        return MockMvcBuilders.standaloneSetup(new ProductController(service, new ProductMapper())).build();
+        return MockMvcBuilders.standaloneSetup(new ProductController(service, new ProductMapper()))
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 }
