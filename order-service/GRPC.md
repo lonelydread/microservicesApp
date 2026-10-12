@@ -4,14 +4,32 @@ Order Service вызывает RPC inventory.v1.InventoryService/CheckAvailabili
 
 ## Контракт и сборка
 
-Единственный контракт находится в inventory-service/src/main/proto/inventory.proto.
-Protobuf-плагин Order Service генерирует Java messages и stub из этого файла через sourceDirectories.
-Для сборки Order Service нужны обе директории сервисов в текущей структуре репозитория.
-Генерируемые файлы находятся в target/generated-sources/protobuf; вручную изменять их не нужно.
+Единственный контракт находится в `grpc-contract/src/main/proto/inventory.proto`.
+Модуль `ru.microservicesApp:grpc-contract:0.0.1-SNAPSHOT` генерирует Java messages и gRPC stubs
+и упаковывает их в обычный JAR. Inventory Service и Order Service подключают этот JAR
+как Maven-зависимость и больше не запускают генерацию самостоятельно.
+Java package сгенерированных классов сохранён, поэтому существующие импорты не меняются.
+Генерируемые файлы находятся в `grpc-contract/target/generated-sources/protobuf`;
+вручную изменять их не нужно.
 
-Из директории каждого сервиса:
+product_id передаётся строкой с UUID. В Java идентификатор товара имеет тип UUID в Inventory, Order и Notification Service.
+Переход с int64 на string меняет wire-контракт. Inventory и Order Service нужно пересобрать и обновить согласованно.
 
-    .\mvnw.cmd -DskipTests compile
+Из корня репозитория собрать оба gRPC-сервиса вместе с контрактом:
+
+    .\order-service\mvnw.cmd -f pom.xml -pl inventory-service,order-service -am clean -DskipTests compile
+
+Для отдельных сборок сервисов сначала установить контракт в локальный Maven-репозиторий:
+
+    .\order-service\mvnw.cmd -f grpc-contract/pom.xml clean install
+
+После этого из директории каждого сервиса:
+
+    .\mvnw.cmd clean -DskipTests compile
+
+При изменении proto нужно заново собрать контракт и зависимые сервисы.
+Для сборки сервисов на другой машине JAR и POM контракта должны быть доступны
+в её локальном или общем Maven-репозитории.
 
 ## Подключение
 
@@ -31,14 +49,15 @@ Order Service использует именованный канал inventory �
 
 Внедри InventoryGrpcClient через конструктор сервиса:
 
-    boolean available = inventoryGrpcClient.checkAvailability(productId, quantity);
+    UUID productId = UUID.fromString("10000000-0000-4000-8000-000000000007");
+    ProductAvailability availability = inventoryGrpcClient.checkAvailability(productId, quantity);
 
-true означает достаточный остаток; false — недостаточный.
+availability.available() означает достаточный остаток; price() и sale() содержат цену и процент скидки.
 Проверка не резервирует и не списывает товар.
 
 Ошибки передаются как StatusRuntimeException:
 
-- INVALID_ARGUMENT — неположительный productId или quantity.
+- INVALID_ARGUMENT — некорректный UUID или неположительный quantity.
 - NOT_FOUND — товар отсутствует.
 - INTERNAL — ошибка проверки на сервере.
 - UNAVAILABLE — сервер недоступен.
@@ -46,12 +65,20 @@ true означает достаточный остаток; false — недо�
 
 Сбой связи не преобразуется в false: вызывающий сервис может отдельно обработать недоступность Inventory.
 
+## База данных
+
+001-create-products.sql создаёт products.id сразу с типом UUID и значением по умолчанию gen_random_uuid().
+Идентификаторы товаров можно получить через REST API. Миграция 002 добавляет поле sale.
+
 ## Проверка
 
-Клиентские TCP-тесты из директории Order Service:
+Из Inventory Service:
 
-    .\mvnw.cmd '-Dtest=InventoryGrpcClientTests' test
+    .\mvnw.cmd test
 
-InventoryGrpcServiceTests проверяют сервер через in-process transport и включают method validation ProductService.
-Обычный запуск тестов Inventory сейчас блокируется несоответствием старых REST-тестов текущим классам;
-gRPC-тесты были проверены отдельно.
+Из Order Service:
+
+    .\mvnw.cmd '-Dtest=OrderControllerTests,InventoryGrpcClientTests,OrderProducerIntegrationTests,OrderMapperTests' test
+
+InventoryGrpcServiceTests проверяют сервер через in-process transport, UUID, ошибки и валидацию DTO.
+InventoryServiceApplicationTests проверяет операции с UUID через JPA на H2.
