@@ -2,8 +2,8 @@ package ru.microservicesApp.inventoryService.grpc;
 
 import io.grpc.stub.StreamObserver;
 import org.springframework.grpc.server.service.GrpcService;
-import ru.microservicesApp.inventoryService.dto.product.ProductAvailabilityRequest;
-import ru.microservicesApp.inventoryService.dto.product.ProductAvailabilityResponse;
+import ru.microservicesApp.inventoryService.dto.productavailability.ProductAvailabilityRequest;
+import ru.microservicesApp.inventoryService.dto.productavailability.ProductAvailabilityResponse;
 import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityRequest;
 import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityResponse;
 import ru.microservicesApp.inventoryService.grpc.generated.InventoryServiceGrpc;

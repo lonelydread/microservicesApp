@@ -1,4 +1,4 @@
-package ru.microservicesApp.inventoryService.dto.product;
+package ru.microservicesApp.inventoryService.dto.productavailability;
 
 import java.math.BigDecimal;
 
