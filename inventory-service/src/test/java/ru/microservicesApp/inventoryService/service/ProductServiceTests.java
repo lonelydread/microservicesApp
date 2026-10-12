@@ -42,8 +42,8 @@ class ProductServiceTests {
         product.setId(PRODUCT_ID);
         product.setName("Keyboard");
         product.setSale(new BigDecimal("12.50"));
-        when(repository.findById(7L)).thenReturn(Optional.of(product));
-        var response = controller.getProductById(7L);
+        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        var response = controller.getProductById(PRODUCT_ID);
         assertEquals(PRODUCT_ID, response.id());
         assertEquals("Keyboard", response.name());
         assertEquals(new BigDecimal("12.50"), response.sale());
@@ -70,23 +70,23 @@ class ProductServiceTests {
     @Test
     void deletesExistingProduct() {
         Product product = new Product();
-        when(repository.findById(7L)).thenReturn(Optional.of(product));
-        controller.deleteProduct(7L);
+        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
+        controller.deleteProduct(PRODUCT_ID);
         verify(repository).delete(product);
     }
 
     @Test
     void missingProductThrowsProductNotFoundException() {
-        when(repository.findById(7L)).thenReturn(Optional.empty());
+        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
         var exception = assertThrows(ProductNotFoundException.class,
-                () -> controller.getProductById(7L));
-        assertEquals("Product with id 7 not found", exception.getMessage());
+                () -> controller.getProductById(PRODUCT_ID));
+        assertEquals("Product with id " + PRODUCT_ID + " not found", exception.getMessage());
     }
 
     @Test
     void doesNotDeleteWhenProductIsMissing() {
-        when(repository.findById(7L)).thenReturn(Optional.empty());
-        assertThrows(ProductNotFoundException.class, () -> controller.deleteProduct(7L));
+        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.empty());
+        assertThrows(ProductNotFoundException.class, () -> controller.deleteProduct(PRODUCT_ID));
         verify(repository, never()).delete(any(Product.class));
     }
 }

@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import io.grpc.Server;
@@ -28,6 +29,12 @@ import ru.microservicesApp.orderService.config.GrpcConfig;
 import static org.junit.jupiter.api.Assertions.*;
 
 class InventoryGrpcClientTests {
+    private static final UUID PRODUCT_ID_7 = UUID.fromString("10000000-0000-4000-8000-000000000007");
+    private static final UUID PRODUCT_ID_8 = UUID.fromString("10000000-0000-4000-8000-000000000008");
+    private static final UUID PRODUCT_ID_9 = UUID.fromString("10000000-0000-4000-8000-000000000009");
+    private static final UUID PRODUCT_ID_10 = UUID.fromString("10000000-0000-4000-8000-000000000010");
+    private static final UUID PRODUCT_ID_11 = UUID.fromString("10000000-0000-4000-8000-000000000011");
+    private static final UUID PRODUCT_ID_12 = UUID.fromString("10000000-0000-4000-8000-000000000012");
     private Server server;
     private ValidatorFactory validatorFactory;
     private ApplicationContextRunner contextRunner;
@@ -40,25 +47,32 @@ class InventoryGrpcClientTests {
                     @Override
                     public void checkAvailability(CheckAvailabilityRequest request,
                                                   StreamObserver<CheckAvailabilityResponse> observer) {
-                        if (request.getProductId() <= 0 || request.getQuantity() <= 0) {
+                        UUID productId;
+                        try {
+                            productId = UUID.fromString(request.getProductId());
+                        } catch (IllegalArgumentException exception) {
                             observer.onError(Status.INVALID_ARGUMENT.asRuntimeException());
-                        } else if (request.getProductId() == 8) {
+                            return;
+                        }
+                        if (request.getQuantity() <= 0) {
+                            observer.onError(Status.INVALID_ARGUMENT.asRuntimeException());
+                        } else if (productId.equals(PRODUCT_ID_8)) {
                             observer.onError(Status.NOT_FOUND.asRuntimeException());
-                        } else if (request.getProductId() == 9) {
+                        } else if (productId.equals(PRODUCT_ID_9)) {
                             // Keep the RPC open until the client's deadline expires.
-                        } else if (request.getProductId() == 10) {
+                        } else if (productId.equals(PRODUCT_ID_10)) {
                             observer.onError(Status.INTERNAL.asRuntimeException());
-                        } else if (request.getProductId() == 11) {
+                        } else if (productId.equals(PRODUCT_ID_11)) {
                             observer.onNext(CheckAvailabilityResponse.newBuilder().setAvailable(true)
                                     .setPrice("not-a-number").setSale("0").build());
                             observer.onCompleted();
-                        } else if (request.getProductId() == 12) {
+                        } else if (productId.equals(PRODUCT_ID_12)) {
                             observer.onNext(CheckAvailabilityResponse.newBuilder().setAvailable(true)
                                     .setPrice("25.50").setSale("100.01").build());
                             observer.onCompleted();
                         } else {
                             observer.onNext(CheckAvailabilityResponse.newBuilder()
-                                    .setAvailable(request.getProductId() == 7 && request.getQuantity() <= 5)
+                                    .setAvailable(productId.equals(PRODUCT_ID_7) && request.getQuantity() <= 5)
                                     .setPrice("99999999999999999.99").setSale("12.50").build());
                             observer.onCompleted();
                         }
@@ -85,11 +99,11 @@ class InventoryGrpcClientTests {
             assertNull(context.getStartupFailure());
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            var response = client.checkAvailability(7, 5);
+            var response = client.checkAvailability(PRODUCT_ID_7, 5);
             assertTrue(response.available());
             assertEquals(new BigDecimal("99999999999999999.99"), response.price());
             assertEquals(new BigDecimal("12.50"), response.sale());
-            assertFalse(client.checkAvailability(7, 6).available());
+            assertFalse(client.checkAvailability(PRODUCT_ID_7, 6).available());
         });
     }
 
@@ -98,9 +112,9 @@ class InventoryGrpcClientTests {
         contextRunner.run(context -> {
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            assertStatus(Status.Code.NOT_FOUND, () -> client.checkAvailability(8, 1));
-            assertStatus(Status.Code.INVALID_ARGUMENT, () -> client.checkAvailability(0, 1));
-            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(10, 1));
+            assertStatus(Status.Code.NOT_FOUND, () -> client.checkAvailability(PRODUCT_ID_8, 1));
+            assertStatus(Status.Code.INVALID_ARGUMENT, () -> client.checkAvailability(PRODUCT_ID_7, 0));
+            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(PRODUCT_ID_10, 1));
         });
     }
 
@@ -109,7 +123,7 @@ class InventoryGrpcClientTests {
         contextRunner.run(context -> {
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofMillis(200));
-            assertStatus(Status.Code.DEADLINE_EXCEEDED, () -> client.checkAvailability(9, 1));
+            assertStatus(Status.Code.DEADLINE_EXCEEDED, () -> client.checkAvailability(PRODUCT_ID_9, 1));
         });
     }
 
@@ -119,7 +133,7 @@ class InventoryGrpcClientTests {
         contextRunner.run(context -> {
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            assertStatus(Status.Code.UNAVAILABLE, () -> client.checkAvailability(7, 1));
+            assertStatus(Status.Code.UNAVAILABLE, () -> client.checkAvailability(PRODUCT_ID_7, 1));
         });
     }
 
@@ -128,8 +142,8 @@ class InventoryGrpcClientTests {
         contextRunner.run(context -> {
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(11, 1));
-            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(12, 1));
+            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(PRODUCT_ID_11, 1));
+            assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(PRODUCT_ID_12, 1));
         });
     }
 

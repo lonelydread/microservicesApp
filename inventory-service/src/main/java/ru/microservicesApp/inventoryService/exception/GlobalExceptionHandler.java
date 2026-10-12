@@ -57,8 +57,11 @@ public class GlobalExceptionHandler implements GrpcExceptionHandler {
         if (exception instanceof ProductNotFoundException) {
             return Status.NOT_FOUND.withDescription("Product not found").asException();
         }
+        if (exception instanceof IllegalArgumentException) {
+            return Status.INVALID_ARGUMENT.withDescription("Product id must be a valid UUID").asException();
+        }
         if (exception instanceof ConstraintViolationException) {
-            return Status.INVALID_ARGUMENT.withDescription("Product id and quantity must be positive").asException();
+            return Status.INVALID_ARGUMENT.withDescription("Product id is required and quantity must be positive").asException();
         }
         return Status.INTERNAL.withDescription("Unable to check product availability").asException();
     }

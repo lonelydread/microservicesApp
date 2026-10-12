@@ -41,7 +41,7 @@ public class OrderService {
     }
 
     private List<OrderItemRequest> aggregateItems(List<OrderItemRequest> items) {
-        Map<Long, Integer> quantities = new LinkedHashMap<>();
+        Map<UUID, Integer> quantities = new LinkedHashMap<>();
         for (OrderItemRequest item : items) {
             quantities.merge(item.productId(), item.quantity(), Integer::sum);
         }

@@ -1,9 +1,9 @@
 package ru.microservicesApp.inventoryService.controller;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Positive;
 
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,7 +36,7 @@ public class ProductController {
     }
 
     @GetMapping("/{product_id}")
-    public ProductResponse getProductById(@PathVariable("product_id") @Positive() Long productId) {
+    public ProductResponse getProductById(@PathVariable("product_id") UUID productId) {
         return productMapper.toResponse(productService.getProductById(productId));
     }
 
@@ -47,7 +47,7 @@ public class ProductController {
     }
 
     @DeleteMapping("/{product_id}")
-    public void deleteProduct(@PathVariable("product_id") @Positive() Long productId) {
+    public void deleteProduct(@PathVariable("product_id") UUID productId) {
         productService.deleteProduct(productId);
     }
 }

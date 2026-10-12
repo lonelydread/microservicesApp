@@ -1,5 +1,7 @@
 package ru.microservicesApp.inventoryService.mapper;
 
+import java.util.UUID;
+
 import org.springframework.stereotype.Component;
 import ru.microservicesApp.inventoryService.dto.productavailability.ProductAvailabilityRequest;
 import ru.microservicesApp.inventoryService.dto.productavailability.ProductAvailabilityResponse;
@@ -10,7 +12,11 @@ import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityResp
 @Component
 public class ProductAvailabilityMapper {
     public ProductAvailabilityRequest toRequest(CheckAvailabilityRequest request) {
-        return new ProductAvailabilityRequest(request.getProductId(), request.getQuantity());
+        UUID productId = UUID.fromString(request.getProductId());
+        if (!productId.toString().equalsIgnoreCase(request.getProductId())) {
+            throw new IllegalArgumentException("Product id must be a valid UUID");
+        }
+        return new ProductAvailabilityRequest(productId, request.getQuantity());
     }
 
     public ProductAvailabilityResponse toResponse(Product product, boolean available) {

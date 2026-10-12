@@ -53,7 +53,7 @@ class OrderProducerIntegrationTests {
         try (Consumer<String, String> consumer = factory.createConsumer()) {
             broker.consumeFromAnEmbeddedTopic(consumer, "orders.created");
             OrderCreatedEvent event = new OrderCreatedEvent(UUID.randomUUID(), UUID.randomUUID(),
-                    List.of(new OrderItemEvent(7, 2, new BigDecimal("99999999999999999.99"),
+                    List.of(new OrderItemEvent(UUID.randomUUID(), 2, new BigDecimal("99999999999999999.99"),
                             new BigDecimal("12.50"), new BigDecimal("174999999999999999.98"))), Instant.now());
             producer.send(event).get(10, TimeUnit.SECONDS);
             var record = KafkaTestUtils.getSingleRecord(consumer, "orders.created");
@@ -61,7 +61,7 @@ class OrderProducerIntegrationTests {
             assertEquals(event.orderId().toString(), record.key());
             assertEquals(event.orderId().toString(), json.get("orderId").asText());
             assertEquals(event.userId().toString(), json.get("userId").asText());
-            assertEquals(7, json.get("items").get(0).get("productId").asLong());
+            assertEquals(event.items().getFirst().productId().toString(), json.get("items").get(0).get("productId").asText());
             assertEquals(2, json.get("items").get(0).get("quantity").asInt());
             assertTrue(json.hasNonNull("createdAt"));
             var decoded = JsonMapper.builder().build().readValue(record.value(), OrderCreatedEvent.class);

@@ -2,6 +2,7 @@ package ru.microservicesApp.orderService.grpc;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import io.grpc.Status;
@@ -26,9 +27,9 @@ public class InventoryGrpcClient {
         this.validator = validator;
     }
 
-    public ProductAvailability checkAvailability(long productId, int quantity) {
+    public ProductAvailability checkAvailability(UUID productId, int quantity) {
         CheckAvailabilityRequest request = CheckAvailabilityRequest.newBuilder()
-                .setProductId(productId).setQuantity(quantity).build();
+                .setProductId(productId.toString()).setQuantity(quantity).build();
         var response = stub.withDeadlineAfter(timeout.toNanos(), TimeUnit.NANOSECONDS)
                 .checkAvailability(request);
         ProductAvailability availability;

@@ -154,17 +154,17 @@ class ProductValidationTests {
         product.setId(PRODUCT_ID);
         product.setSale(new BigDecimal("12.50"));
         ProductService service = mock(ProductService.class);
-        when(service.getProductById(7L)).thenReturn(product);
+        when(service.getProductById(PRODUCT_ID)).thenReturn(product);
         when(service.getAllProducts()).thenReturn(List.of(product));
         MockMvc mvc = mvc(service);
-        mvc.perform(get("/api/products/7")).andExpect(status().isOk())
+        mvc.perform(get("/api/products/" + PRODUCT_ID)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.sale").value(12.50));
         mvc.perform(get("/api/products")).andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].sale").value(12.50));
     }
 
     @Test
-    void rejectsNonPositiveAndNonNumericIdsBeforeCallingService() throws Exception {
+    void rejectsMalformedUuidIdsBeforeCallingService() throws Exception {
         ProductService service = mock(ProductService.class);
         MockMvc mvc = mvc(service);
         for (String id : List.of("0", "-1", "abc", "9223372036854775808")) {
@@ -189,13 +189,13 @@ class ProductValidationTests {
     @Test
     void returnsNotFoundForMissingProductsOnGetAndDelete() throws Exception {
         ProductService service = mock(ProductService.class);
-        when(service.getProductById(7L)).thenThrow(new ProductNotFoundException(7L));
-        doThrow(new ProductNotFoundException(7L)).when(service).deleteProduct(7L);
+        when(service.getProductById(PRODUCT_ID)).thenThrow(new ProductNotFoundException(PRODUCT_ID));
+        doThrow(new ProductNotFoundException(PRODUCT_ID)).when(service).deleteProduct(PRODUCT_ID);
         MockMvc mvc = mvc(service);
-        mvc.perform(get("/api/products/7")).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Product with id 7 not found"));
-        mvc.perform(delete("/api/products/7")).andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Product with id 7 not found"));
+        mvc.perform(get("/api/products/" + PRODUCT_ID)).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Product with id " + PRODUCT_ID + " not found"));
+        mvc.perform(delete("/api/products/" + PRODUCT_ID)).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Product with id " + PRODUCT_ID + " not found"));
     }
 
     @Test

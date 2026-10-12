@@ -1,6 +1,7 @@
 package ru.microservicesApp.inventoryService.service;
 
 import java.util.List;
+import java.util.UUID;
 
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Service;
@@ -29,7 +30,7 @@ public class ProductService {
         return productRepository.findAll();
     }
 
-    public Product getProductById(Long productId) {
+    public Product getProductById(UUID productId) {
         return productRepository.findById(productId)
                 .orElseThrow(() -> new ProductNotFoundException(productId));
     }
@@ -40,7 +41,7 @@ public class ProductService {
     }
 
     @Transactional
-    public void deleteProduct(Long productId) {
+    public void deleteProduct(UUID productId) {
         Product product = getProductById(productId);
         productRepository.delete(product);
     }
