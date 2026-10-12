@@ -17,4 +17,8 @@ message CheckAvailabilityRequest {
 
 message CheckAvailabilityResponse {
   bool available = 1;
+  // Decimal values are strings to preserve precision across services.
+  string price = 2;
+  // Discount percentage from 0 to 100.
+  string sale = 3;
 }

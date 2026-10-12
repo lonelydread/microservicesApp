@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.grpc.server.service.GrpcService;
 import org.springframework.web.server.ResponseStatusException;
+import ru.microservicesApp.inventoryService.dto.product.ProductAvailability;
 import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityRequest;
 import ru.microservicesApp.inventoryService.grpc.generated.CheckAvailabilityResponse;
 import ru.microservicesApp.inventoryService.grpc.generated.InventoryServiceGrpc;
@@ -24,9 +25,11 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
     @Override
     public void checkAvailability(CheckAvailabilityRequest request,
                                   StreamObserver<CheckAvailabilityResponse> responseObserver) {
-        final boolean available;
+        final CheckAvailabilityResponse response;
         try {
-            available = productService.checkAvailability(request.getProductId(), request.getQuantity());
+            ProductAvailability availability = productService.checkAvailability(request.getProductId(), request.getQuantity());
+            response = CheckAvailabilityResponse.newBuilder().setAvailable(availability.available())
+                    .setPrice(availability.price().toPlainString()).setSale(availability.sale().toPlainString()).build();
         } catch (ConstraintViolationException exception) {
             responseObserver.onError(Status.INVALID_ARGUMENT.withDescription("Product id and quantity must be positive")
                     .asRuntimeException());
@@ -46,7 +49,7 @@ public class InventoryGrpcService extends InventoryServiceGrpc.InventoryServiceI
                     .asRuntimeException());
             return;
         }
-        responseObserver.onNext(CheckAvailabilityResponse.newBuilder().setAvailable(available).build());
+        responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
 }

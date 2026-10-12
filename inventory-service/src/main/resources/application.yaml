@@ -4,7 +4,7 @@ spring:
 
   liquibase:
     enabled: true
-    change-log: classpath:db/changelog/001-create-products.sql
+    change-log: classpath:db/changelog/db.changelog-master.yaml
 
   grpc:
     server:

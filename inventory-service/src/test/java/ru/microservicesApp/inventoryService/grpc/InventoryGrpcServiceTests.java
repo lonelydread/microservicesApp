@@ -1,5 +1,6 @@
 package ru.microservicesApp.inventoryService.grpc;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
@@ -71,6 +72,19 @@ class InventoryGrpcServiceTests {
     }
 
     @Test
+    void returnsPriceAndSaleFromTheSameProductRead() {
+        Product product = productWithStock(5);
+        product.setPrice(new BigDecimal("99999999999999999.99"));
+        product.setSale(new BigDecimal("12.50"));
+        when(repository.findById(7L)).thenReturn(Optional.of(product));
+        var response = stub.checkAvailability(request(7L, 2));
+        assertTrue(response.getAvailable());
+        assertEquals("99999999999999999.99", response.getPrice());
+        assertEquals("12.50", response.getSale());
+        verify(repository, times(1)).findById(7L);
+    }
+
+    @Test
     void returnsAvailableWhenStockExceedsRequestedQuantity() {
         when(repository.findById(7L)).thenReturn(Optional.of(productWithStock(5)));
         assertTrue(stub.checkAvailability(request(7L, 1)).getAvailable());
@@ -138,6 +152,7 @@ class InventoryGrpcServiceTests {
     private Product productWithStock(Integer quantity) {
         Product product = new Product();
         product.setQuantity(quantity);
+        product.setPrice(new BigDecimal("25.50"));
         return product;
     }
 }

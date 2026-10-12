@@ -8,8 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
+import ru.microservicesApp.inventoryService.dto.product.ProductAvailability;
 import ru.microservicesApp.inventoryService.entity.Product;
 import ru.microservicesApp.inventoryService.repository.ProductRepository;
 
@@ -44,12 +44,12 @@ public class ProductService {
         productRepository.delete(product);
     }
 
-    public boolean checkAvailability(
+    public ProductAvailability checkAvailability(
             @NotNull @Positive Long productId,
             @Positive int requestedQuantity) {
 
         Product product = getProductById(productId);
-        return product.getQuantity() != null
-                && product.getQuantity() >= requestedQuantity;
+        boolean available = product.getQuantity() != null && product.getQuantity() >= requestedQuantity;
+        return new ProductAvailability(available, product.getPrice(), product.getSale());
     }
 }

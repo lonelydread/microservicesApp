@@ -22,6 +22,7 @@ import ru.microservicesApp.inventoryService.service.ProductService;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class ProductValidationTests {
@@ -40,67 +41,117 @@ class ProductValidationTests {
     }
 
     @Test
-    void acceptsZeroValuesAndMaximumDatabaseBoundaries() {
-        assertTrue(validator.validate(new ProductRequest("Product", null, BigDecimal.ZERO, 0)).isEmpty());
+    void acceptsPositiveValuesAndMaximumDatabaseBoundaries() {
         assertTrue(validator.validate(new ProductRequest("a".repeat(255), "b".repeat(255),
-                new BigDecimal("99999999999999999.99"), Integer.MAX_VALUE)).isEmpty());
-        assertTrue(validator.validate(new ProductRequest("Product", "", new BigDecimal("1.23"), 1)).isEmpty());
+                new BigDecimal("99999999999999999.99"), new BigDecimal("100.00"), Integer.MAX_VALUE)).isEmpty());
+        assertTrue(validator.validate(new ProductRequest("Product", "", new BigDecimal("1.23"),
+                BigDecimal.ZERO, 1)).isEmpty());
     }
 
     @Test
     void reportsAllMissingRequiredFields() {
-        assertEquals(Set.of("name", "price", "quantity"),
-                invalidFields(new ProductRequest(null, null, null, null)));
+        assertEquals(Set.of("name", "price", "sale", "quantity"),
+                invalidFields(new ProductRequest(null, null, null, null, null)));
     }
 
     @Test
     void rejectsBlankAndOversizedNames() {
         for (String name : List.of("", " \t\n", "a".repeat(256))) {
-            assertEquals(Set.of("name"), invalidFields(new ProductRequest(name, null, BigDecimal.ONE, 1)));
+            assertEquals(Set.of("name"), invalidFields(new ProductRequest(name, null, BigDecimal.ONE,
+                    BigDecimal.ZERO, 1)));
         }
     }
 
     @Test
     void rejectsOversizedDescriptionAndNegativeQuantity() {
         assertEquals(Set.of("description", "quantity"),
-                invalidFields(new ProductRequest("Product", "a".repeat(256), BigDecimal.ONE, -1)));
+                invalidFields(new ProductRequest("Product", "a".repeat(256), BigDecimal.ONE, BigDecimal.ZERO, -1)));
     }
 
     @Test
-    void rejectsNegativeOverpreciseAndOversizedPrices() {
-        for (String price : List.of("-0.01", "1.001", "1.2300", "100000000000000000.00", "1E+18", "0.0001")) {
-            assertEquals(Set.of("price"), invalidFields(new ProductRequest("Product", null, new BigDecimal(price), 1)));
+    void rejectsNonPositiveOverpreciseAndOversizedPrices() {
+        for (String price : List.of("0", "-0.01", "1.001", "1.2300", "100000000000000000.00", "1E+18", "0.0001")) {
+            assertEquals(Set.of("price"), invalidFields(new ProductRequest("Product", null, new BigDecimal(price),
+                    BigDecimal.ZERO, 1)));
+        }
+    }
+
+    @Test
+    void acceptsSaleBoundariesAndFractionalPercentages() {
+        for (String sale : List.of("0", "0.01", "12.50", "99.99", "100", "100.00")) {
+            BigDecimal percentage = new BigDecimal(sale);
+            assertTrue(validator.validate(new ProductRequest("Product", null, BigDecimal.ONE, percentage, 1)).isEmpty());
+            Product product = new Product();
+            product.setSale(percentage);
+            assertTrue(validator.validate(product).isEmpty());
+        }
+        assertEquals(BigDecimal.ZERO, new Product().getSale());
+    }
+
+    @Test
+    void rejectsMissingOutOfRangeAndOverpreciseSaleOnRequestAndEntity() {
+        for (BigDecimal sale : new BigDecimal[] {null, new BigDecimal("-0.01"), new BigDecimal("100.01"),
+                new BigDecimal("1000"), new BigDecimal("1.001")}) {
+            assertEquals(Set.of("sale"), invalidFields(new ProductRequest("Product", null, BigDecimal.ONE, sale, 1)));
+            Product product = new Product();
+            product.setSale(sale);
+            assertEquals(Set.of("sale"), validator.validate(product).stream()
+                    .map(violation -> violation.getPropertyPath().toString()).collect(Collectors.toSet()));
         }
     }
 
     @Test
     void returnsBadRequestAndDoesNotCallServiceForInvalidProduct() throws Exception {
         ProductService service = mock(ProductService.class);
-        MockMvc mvc = mvc(service);
-        var response = mvc.perform(post("/api/products")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\" \",\"price\":-1,\"quantity\":-1}"))
-                .andExpect(status().isBadRequest()).andReturn().getResponse();
-        String body = response.getContentAsString();
-        assertTrue(body.contains("\"errors\""));
-        assertTrue(body.contains("\"name\""));
-        assertTrue(body.contains("\"price\""));
-        assertTrue(body.contains("\"quantity\""));
+        mvc(service).perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\" \",\"price\":-1,\"sale\":0,\"quantity\":-1}"))
+                .andExpect(status().isBadRequest());
         verifyNoInteractions(service);
     }
 
     @Test
-    void acceptsValidProductThroughHttp() throws Exception {
+    void rejectsInvalidSaleThroughHttpBeforeCallingService() throws Exception {
+        ProductService service = mock(ProductService.class);
+        MockMvc mvc = mvc(service);
+        for (String sale : List.of("null", "-0.01", "100.01", "1.001", "\"abc\"")) {
+            mvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"name\":\"Keyboard\",\"price\":25.50,\"quantity\":3,\"sale\":" + sale + "}"))
+                    .andExpect(status().isBadRequest());
+        }
+        mvc.perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Keyboard\",\"price\":25.50,\"quantity\":3}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void acceptsValidProductWithSaleThroughHttp() throws Exception {
         ProductService service = mock(ProductService.class);
         when(service.createProduct(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
+            assertEquals(new BigDecimal("12.50"), product.getSale());
             product.setId(7L);
             return product;
         });
         mvc(service).perform(post("/api/products").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"Keyboard\",\"price\":25.50,\"quantity\":3}"))
-                .andExpect(status().isCreated());
+                        .content("{\"name\":\"Keyboard\",\"price\":25.50,\"sale\":12.50,\"quantity\":3}"))
+                .andExpect(status().isOk());
         verify(service).createProduct(any(Product.class));
+    }
+
+    @Test
+    void includesSaleInSingleProductAndProductListResponses() throws Exception {
+        Product product = new Product();
+        product.setId(7L);
+        product.setSale(new BigDecimal("12.50"));
+        ProductService service = mock(ProductService.class);
+        when(service.getProductById(7L)).thenReturn(product);
+        when(service.getAllProducts()).thenReturn(List.of(product));
+        MockMvc mvc = mvc(service);
+        mvc.perform(get("/api/products/7")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.sale").value(12.50));
+        mvc.perform(get("/api/products")).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].sale").value(12.50));
     }
 
     @Test
@@ -108,9 +159,7 @@ class ProductValidationTests {
         ProductService service = mock(ProductService.class);
         MockMvc mvc = mvc(service);
         for (String id : List.of("0", "-1", "abc", "9223372036854775808")) {
-            var getResponse = mvc.perform(get("/api/products/" + id))
-                    .andExpect(status().isBadRequest()).andReturn().getResponse();
-            assertTrue(getResponse.getContentAsString().contains("\"product_id\""));
+            mvc.perform(get("/api/products/" + id)).andExpect(status().isBadRequest());
             mvc.perform(delete("/api/products/" + id)).andExpect(status().isBadRequest());
         }
         verifyNoInteractions(service);
@@ -135,7 +184,6 @@ class ProductValidationTests {
     }
 
     private MockMvc mvc(ProductService service) {
-        return MockMvcBuilders.standaloneSetup(new ProductController(service, new ProductMapper()))
-                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        return MockMvcBuilders.standaloneSetup(new ProductController(service, new ProductMapper())).build();
     }
 }

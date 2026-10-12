@@ -17,6 +17,12 @@ public record ProductRequest(
         @Digits(integer = 17, fraction = 2)
         BigDecimal price,
 
+        @NotNull
+        @DecimalMin("0")
+        @DecimalMax("100")
+        @Digits(integer = 3, fraction = 2)
+        BigDecimal sale,
+
         @NotNull()
         @Positive()
         Integer quantity) {

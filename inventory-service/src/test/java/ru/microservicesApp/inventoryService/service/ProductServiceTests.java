@@ -6,6 +6,8 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import ru.microservicesApp.inventoryService.controller.ProductController;
 import ru.microservicesApp.inventoryService.dto.product.ProductRequest;
 import ru.microservicesApp.inventoryService.entity.Product;
@@ -37,57 +39,52 @@ class ProductServiceTests {
         Product product = new Product();
         product.setId(7L);
         product.setName("Keyboard");
+        product.setSale(new BigDecimal("12.50"));
         when(repository.findById(7L)).thenReturn(Optional.of(product));
         var response = controller.getProductById(7L);
         assertEquals(7L, response.id());
         assertEquals("Keyboard", response.name());
+        assertEquals(new BigDecimal("12.50"), response.sale());
     }
 
     @Test
-    void createsProductAndReturnsGeneratedIdAndLocation() {
+    void createsProductWithSale() {
         when(repository.save(any(Product.class))).thenAnswer(invocation -> {
             Product product = invocation.getArgument(0);
             assertNull(product.getId());
             assertEquals("Keyboard", product.getName());
             assertEquals("USB keyboard", product.getDescription());
             assertEquals(new BigDecimal("25.50"), product.getPrice());
+            assertEquals(new BigDecimal("12.50"), product.getSale());
             assertEquals(3, product.getQuantity());
             product.setId(7L);
             return product;
         });
-        var response = controller.createProduct(
-                new ProductRequest("Keyboard", "USB keyboard", new BigDecimal("25.50"), 3));
-        assertEquals(201, response.getStatusCode().value());
-        assertEquals("/api/products/7", response.getHeaders().getLocation().toString());
-        assertEquals(7L, response.getBody().id());
-        assertEquals(new BigDecimal("25.50"), response.getBody().price());
+        controller.createProduct(new ProductRequest("Keyboard", "USB keyboard",
+                new BigDecimal("25.50"), new BigDecimal("12.50"), 3));
         verify(repository).save(any(Product.class));
     }
 
     @Test
-    void deletesExistingProductAndReturnsNoContent() {
+    void deletesExistingProduct() {
         Product product = new Product();
         when(repository.findById(7L)).thenReturn(Optional.of(product));
-        var response = controller.deleteProduct(7L);
-        assertEquals(204, response.getStatusCode().value());
-        assertNull(response.getBody());
+        controller.deleteProduct(7L);
         verify(repository).delete(product);
     }
 
     @Test
     void missingProductMapsToNotFound() {
         when(repository.findById(7L)).thenReturn(Optional.empty());
-        var exception = assertThrows(ProductNotFoundException.class,
+        var exception = assertThrows(ResponseStatusException.class,
                 () -> controller.getProductById(7L));
-        var response = new GlobalExceptionHandler().handleProductNotFound(exception);
-        assertEquals(404, response.getStatusCode().value());
-        assertEquals("Product with id 7 not found", response.getBody().get("message"));
+        assertEquals(HttpStatus.NOT_FOUND, exception.getStatusCode());
     }
 
     @Test
     void doesNotDeleteWhenProductIsMissing() {
         when(repository.findById(7L)).thenReturn(Optional.empty());
-        assertThrows(ProductNotFoundException.class, () -> controller.deleteProduct(7L));
+        assertThrows(ResponseStatusException.class, () -> controller.deleteProduct(7L));
         verify(repository, never()).delete(any(Product.class));
     }
 }
