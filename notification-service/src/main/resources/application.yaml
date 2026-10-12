@@ -1,3 +1,35 @@
 spring:
   application:
     name: notificationService
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/notifications}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/001-create-orders.sql
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${ORDER_CONSUMER_GROUP:notification-service}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        "[spring.deserializer.value.delegate.class]": org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        "[spring.json.value.default.type]": ru.microservicesApp.notificationService.kafka.event.OrderCreatedEvent
+        "[spring.json.trusted.packages]": ru.microservicesApp.notificationService.kafka.event
+        "[spring.json.use.type.headers]": false
+    listener:
+      ack-mode: record
+
+server:
+  port: ${SERVER_PORT:8082}
+
+orders:
+  kafka:
+    topic: ${ORDER_CREATED_TOPIC:orders.created}
