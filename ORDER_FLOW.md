@@ -6,6 +6,8 @@
 4. Если все товары доступны, Order Service рассчитывает сумму каждой позиции и публикует один `OrderCreatedEvent` в `orders.created`. Ключ сообщения — UUID заказа.
 5. Notification Service читает событие и сохраняет каждую позицию отдельной строкой таблицы `orders`. Все позиции одного заказа сохраняются одной транзакцией.
 
+Order Service использует `CreateOrderRequest` для входных данных, `OrderCreatedEvent` для Kafka и `OrderResponse` для HTTP-ответа. JPA-сущности заказа в этом сервисе нет; заказы сохраняет Notification Service.
+
 `sale` — процент скидки от 0 до 100. `price` — цена единицы товара до скидки.
 `totalPrice = price × quantity × (1 − sale / 100)`, округление только конечной суммы до двух знаков, `HALF_UP`.
 

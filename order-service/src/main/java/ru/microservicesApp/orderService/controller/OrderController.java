@@ -1,5 +1,6 @@
 package ru.microservicesApp.orderService.controller;
 
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -27,7 +28,7 @@ public class OrderController {
     @PostMapping
     public CompletableFuture<ResponseEntity<OrderResponse>> createOrder(
             @AuthenticationPrincipal Jwt jwt, @Valid @RequestBody CreateOrderRequest request) {
-        return orderService.createOrder(UUID.fromString(jwt.getSubject()), request)
+        return orderService.createOrder(UUID.fromString(Objects.requireNonNull(jwt.getSubject())), request)
                 .thenApply(response -> ResponseEntity.accepted().body(response));
     }
 }
