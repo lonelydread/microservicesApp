@@ -1,7 +1,5 @@
 package ru.microservicesApp.notificationService.config;
 
-import java.util.Map;
-
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -20,8 +18,6 @@ public class KafkaConfig {
 
     @Bean
     public DefaultErrorHandler orderErrorHandler() {
-        DefaultErrorHandler handler = new DefaultErrorHandler(new FixedBackOff(1000L, FixedBackOff.UNLIMITED_ATTEMPTS));
-        handler.setClassifications(Map.of(), true);
-        return handler;
+        return new DefaultErrorHandler(new FixedBackOff(1000L, 2L));
     }
 }
