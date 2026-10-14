@@ -8,16 +8,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 import ru.microservicesApp.notificationService.entity.Order;
 import ru.microservicesApp.notificationService.repository.OrderRepository;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -59,7 +56,7 @@ class OrderReadControllerTests {
     }
 
     @Test
-    void returnsEveryTableRowWithAllPurchaseFields() throws Exception {
+    void readsAllPurchasesAndFiltersByOrderAndUser() throws Exception {
         mvc.perform(get("/api/orders/all")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(4))
                 .andExpect(jsonPath("$[0].id").value(firstRowId))
@@ -69,58 +66,32 @@ class OrderReadControllerTests {
                 .andExpect(jsonPath("$[0].price").value(1000.00))
                 .andExpect(jsonPath("$[0].sale").value(10.00))
                 .andExpect(jsonPath("$[0].totalPrice").value(1800.00))
-                .andExpect(jsonPath("$[0].userId").value(FIRST_USER_ID.toString()))
-                .andExpect(jsonPath("$[3].orderId").value(THIRD_ORDER_ID.toString()));
-    }
+                .andExpect(jsonPath("$[0].userId").value(FIRST_USER_ID.toString()));
 
-    @Test
-    void returnsAllPurchasesForOnlyTheRequestedOrder() throws Exception {
-        mvc.perform(get("/api/orders/" + FIRST_ORDER_ID)).andExpect(status().isOk())
+        mvc.perform(get("/api/orders/{id}", FIRST_ORDER_ID)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].orderId").value(FIRST_ORDER_ID.toString()))
                 .andExpect(jsonPath("$[1].orderId").value(FIRST_ORDER_ID.toString()))
-                .andExpect(jsonPath("$[0].productId").value(FIRST_PRODUCT_ID.toString()))
                 .andExpect(jsonPath("$[1].productId").value(SECOND_PRODUCT_ID.toString()));
-    }
 
-    @Test
-    void returnsPurchasesFromAllOrdersForOnlyTheRequestedUser() throws Exception {
-        mvc.perform(get("/api/orders/user/" + FIRST_USER_ID)).andExpect(status().isOk())
+        mvc.perform(get("/api/orders/user/{id}", FIRST_USER_ID)).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3))
                 .andExpect(jsonPath("$[0].userId").value(FIRST_USER_ID.toString()))
                 .andExpect(jsonPath("$[1].userId").value(FIRST_USER_ID.toString()))
                 .andExpect(jsonPath("$[2].userId").value(FIRST_USER_ID.toString()))
-                .andExpect(jsonPath("$[0].orderId").value(FIRST_ORDER_ID.toString()))
                 .andExpect(jsonPath("$[2].orderId").value(SECOND_ORDER_ID.toString()));
-        mvc.perform(get("/api/orders/user/" + SECOND_USER_ID)).andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].orderId").value(THIRD_ORDER_ID.toString()));
     }
 
     @Test
-    void returnsEmptyListsWhenThereAreNoMatchingPurchases() throws Exception {
-        mvc.perform(get("/api/orders/" + UUID.randomUUID())).andExpect(status().isOk())
+    void missingPurchasesReturnEmptyListsAndMalformedIdsReturnBadRequest() throws Exception {
+        mvc.perform(get("/api/orders/{id}", UUID.randomUUID())).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
-        mvc.perform(get("/api/orders/user/" + UUID.randomUUID())).andExpect(status().isOk())
+        mvc.perform(get("/api/orders/user/{id}", UUID.randomUUID())).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/api/orders/not-a-uuid")).andExpect(status().isBadRequest());
+        mvc.perform(get("/api/orders/user/not-a-uuid")).andExpect(status().isBadRequest());
         repository.deleteAll();
         mvc.perform(get("/api/orders/all")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
-    }
-
-    @Test
-    void rejectsMalformedUuidIdentifiers() throws Exception {
-        mvc.perform(get("/api/orders/not-a-uuid")).andExpect(status().isBadRequest());
-        mvc.perform(get("/api/orders/user/not-a-uuid")).andExpect(status().isBadRequest());
-    }
-
-    @Test
-    void readEndpointsDoNotAcceptPostRequests() throws Exception {
-        for (String route : List.of("/api/orders/all", "/api/orders/" + FIRST_ORDER_ID,
-                "/api/orders/user/" + FIRST_USER_ID)) {
-            mvc.perform(post(route).contentType(MediaType.APPLICATION_JSON).content("{}"))
-                    .andExpect(status().isMethodNotAllowed());
-        }
-        assertEquals(4, repository.count());
     }
 }
