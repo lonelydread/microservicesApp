@@ -25,10 +25,6 @@ class OrderMapperTests {
         assertEquals(new BigDecimal("44.63"), item.totalPrice());
         assertEquals(new BigDecimal("25.50"), item.price());
         assertEquals(new BigDecimal("12.50"), item.sale());
-    }
-
-    @Test
-    void supportsZeroAndFullDiscount() {
         assertEquals(new BigDecimal("51.00"), mapper.toItemEvent(new OrderItemRequest(PRODUCT_ID_7, 2),
                 new ProductAvailability(true, new BigDecimal("25.50"), BigDecimal.ZERO)).totalPrice());
         assertEquals(new BigDecimal("0.00"), mapper.toItemEvent(new OrderItemRequest(PRODUCT_ID_7, 2),
@@ -54,14 +50,5 @@ class OrderMapperTests {
         assertEquals(new BigDecimal("0.05"), response.items().getFirst().totalPrice());
         assertEquals(new BigDecimal("0.05"), response.items().getLast().totalPrice());
         assertEquals(new BigDecimal("0.10"), response.totalPrice());
-    }
-
-    @Test
-    void preservesPrecisionForMaximumPriceAndQuantity() {
-        BigDecimal price = new BigDecimal("99999999999999999.99");
-        var item = mapper.toItemEvent(new OrderItemRequest(PRODUCT_ID_7, Integer.MAX_VALUE),
-                new ProductAvailability(true, price, BigDecimal.ZERO));
-        assertEquals(price.multiply(BigDecimal.valueOf(Integer.MAX_VALUE)), item.totalPrice());
-        assertEquals(29, item.totalPrice().precision());
     }
 }

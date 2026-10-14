@@ -25,6 +25,7 @@ spring:
         "[request.timeout.ms]": 5000
         "[delivery.timeout.ms]": 15000
   mvc:
+    log-request-details: false
     async:
       request-timeout: 30s
   grpc:
@@ -34,6 +35,10 @@ spring:
           target: ${INVENTORY_GRPC_TARGET:localhost:9090}
           ssl:
             enabled: false
+
+logging:
+  level:
+    org.springframework.web: INFO
 
 security:
   jwt:

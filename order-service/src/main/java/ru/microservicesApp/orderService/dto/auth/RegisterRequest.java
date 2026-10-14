@@ -9,4 +9,8 @@ public record RegisterRequest(
         @NotBlank @Size(max = 255) String username,
         @NotBlank @Email @Size(max = 255) String email,
         @NotBlank @Size(min = 8) @PasswordByteLength String password) {
+    @Override
+    public String toString() {
+        return "RegisterRequest[username=" + username + ", email=" + email + "]";
+    }
 }

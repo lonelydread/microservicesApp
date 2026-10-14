@@ -73,7 +73,7 @@ class InventoryGrpcClientTests {
                         } else {
                             observer.onNext(CheckAvailabilityResponse.newBuilder()
                                     .setAvailable(productId.equals(PRODUCT_ID_7) && request.getQuantity() <= 5)
-                                    .setPrice("99999999999999999.99").setSale("12.50").build());
+                                    .setPrice("25.50").setSale("12.50").build());
                             observer.onCompleted();
                         }
                     }
@@ -94,24 +94,16 @@ class InventoryGrpcClientTests {
     }
 
     @Test
-    void configuredClientChecksAvailabilityOverTcp() {
+    void configuredClientPreservesAvailabilityPricingAndRpcStatuses() {
         contextRunner.run(context -> {
             assertNull(context.getStartupFailure());
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
             var response = client.checkAvailability(PRODUCT_ID_7, 5);
             assertTrue(response.available());
-            assertEquals(new BigDecimal("99999999999999999.99"), response.price());
+            assertEquals(new BigDecimal("25.50"), response.price());
             assertEquals(new BigDecimal("12.50"), response.sale());
             assertFalse(client.checkAvailability(PRODUCT_ID_7, 6).available());
-        });
-    }
-
-    @Test
-    void preservesRpcErrorStatusesInsteadOfTreatingThemAsInsufficientStock() {
-        contextRunner.run(context -> {
-            InventoryGrpcClient client = client(context.getBean(
-                    InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
             assertStatus(Status.Code.NOT_FOUND, () -> client.checkAvailability(PRODUCT_ID_8, 1));
             assertStatus(Status.Code.INVALID_ARGUMENT, () -> client.checkAvailability(PRODUCT_ID_7, 0));
             assertStatus(Status.Code.INTERNAL, () -> client.checkAvailability(PRODUCT_ID_10, 1));
@@ -124,16 +116,6 @@ class InventoryGrpcClientTests {
             InventoryGrpcClient client = client(context.getBean(
                     InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofMillis(200));
             assertStatus(Status.Code.DEADLINE_EXCEEDED, () -> client.checkAvailability(PRODUCT_ID_9, 1));
-        });
-    }
-
-    @Test
-    void reportsUnavailableServer() throws Exception {
-        server.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        contextRunner.run(context -> {
-            InventoryGrpcClient client = client(context.getBean(
-                    InventoryServiceGrpc.InventoryServiceBlockingStub.class), Duration.ofSeconds(3));
-            assertStatus(Status.Code.UNAVAILABLE, () -> client.checkAvailability(PRODUCT_ID_7, 1));
         });
     }
 

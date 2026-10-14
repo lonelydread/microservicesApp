@@ -1,47 +1,66 @@
 package ru.microservicesApp.orderService.exception;
 
-import java.util.Map;
-
-import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.authentication.AuthenticationServiceException;
-import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.jspecify.annotations.Nullable;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.TransientDataAccessResourceException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.AuthenticationServiceException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(UserNotFoundException.class)
-    public ResponseEntity<Map<String, String>> handleUserNotFound(UserNotFoundException exception) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("message", exception.getMessage()));
+    public ResponseEntity<Void> handleUserNotFound(UserNotFoundException exception) {
+        return ResponseEntity.notFound().build();
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, String>> handleDataConflict(DataIntegrityViolationException exception) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(Map.of("message", "Data conflicts with database constraints"));
+    public ResponseEntity<Void> handleDataConflict(DataIntegrityViolationException exception) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).build();
+    }
+
+    @ExceptionHandler({DataAccessResourceFailureException.class, TransientDataAccessResourceException.class,
+            CannotCreateTransactionException.class})
+    public ResponseEntity<Void> handleDatabaseUnavailable(RuntimeException exception) {
+        logger.error("Database is unavailable", exception);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
     }
 
     @ExceptionHandler(AuthenticationServiceException.class)
-    public ResponseEntity<Map<String, String>> handleAuthenticationService(AuthenticationServiceException exception) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("message", "Unable to authenticate"));
-    }
-    @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<Map<String, String>> handleAuthentication(AuthenticationException exception) {
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("message", "Authentication failed"));
+    public ResponseEntity<Void> handleAuthenticationService(AuthenticationServiceException exception) {
+        logger.error("Unable to authenticate", exception);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException exception) {
-        Map<String, String> errors = new java.util.LinkedHashMap<>();
-        for (var error : exception.getBindingResult().getFieldErrors()) {
-            errors.putIfAbsent(error.getField(), error.getDefaultMessage());
-        }
-        return ResponseEntity.badRequest().body(Map.of("message", "Validation failed", "errors", errors));
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Void> handleAuthentication(AuthenticationException exception) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Void> handleAccessDenied(AccessDeniedException exception) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<Void> handleUnexpectedException(RuntimeException exception) {
+        logger.error("Unexpected request failure", exception);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+    }
+
+    @Override
+    protected ResponseEntity<Object> createResponseEntity(
+            @Nullable Object body, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        return new ResponseEntity<>(null, headers, status);
     }
 }
