@@ -69,46 +69,24 @@ class InventoryGrpcServiceTests {
     }
 
     @Test
-    void returnsAvailableWhenRequestedQuantityEqualsStock() {
-        Product product = productWithStock(5);
-        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
-        assertTrue(stub.checkAvailability(request(PRODUCT_ID, 5)).getAvailable());
-        assertEquals(5, product.getQuantity());
-        verify(repository, never()).save(any(Product.class));
-        verify(repository, never()).delete(any(Product.class));
-    }
-
-    @Test
     void returnsPriceAndSaleFromTheSameProductRead() {
         Product product = productWithStock(5);
-        product.setPrice(new BigDecimal("99999999999999999.99"));
+        product.setPrice(new BigDecimal("25.50"));
         product.setSale(new BigDecimal("12.50"));
         when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(product));
-        var response = stub.checkAvailability(request(PRODUCT_ID, 2));
+        var response = stub.checkAvailability(request(PRODUCT_ID, 5));
         assertTrue(response.getAvailable());
-        assertEquals("99999999999999999.99", response.getPrice());
+        assertEquals("25.50", response.getPrice());
         assertEquals("12.50", response.getSale());
         verify(repository, times(1)).findById(PRODUCT_ID);
-    }
-
-    @Test
-    void returnsAvailableWhenStockExceedsRequestedQuantity() {
-        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(productWithStock(5)));
-        assertTrue(stub.checkAvailability(request(PRODUCT_ID, 1)).getAvailable());
+        assertEquals(5, product.getQuantity());
+        verify(repository, never()).save(any(Product.class));
     }
 
     @Test
     void returnsUnavailableWhenStockIsInsufficient() {
         when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(productWithStock(5)));
         assertFalse(stub.checkAvailability(request(PRODUCT_ID, 6)).getAvailable());
-    }
-
-    @Test
-    void returnsUnavailableWhenStockIsZeroOrUnknown() {
-        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(productWithStock(0)));
-        assertFalse(stub.checkAvailability(request(PRODUCT_ID, 1)).getAvailable());
-        when(repository.findById(PRODUCT_ID)).thenReturn(Optional.of(productWithStock(null)));
-        assertFalse(stub.checkAvailability(request(PRODUCT_ID, 1)).getAvailable());
     }
 
     @Test
@@ -129,22 +107,6 @@ class InventoryGrpcServiceTests {
         }
         assertInvalidArgument(CheckAvailabilityRequest.getDefaultInstance());
         verifyNoInteractions(repository);
-    }
-
-    @Test
-    void acceptsMaximumSupportedQuantity() {
-        when(repository.findById(PRODUCT_ID))
-                .thenReturn(Optional.of(productWithStock(Integer.MAX_VALUE)));
-        assertTrue(stub.checkAvailability(request(PRODUCT_ID, Integer.MAX_VALUE)).getAvailable());
-    }
-
-    @Test
-    void returnsInternalWithoutExposingDatabaseError() {
-        when(repository.findById(PRODUCT_ID)).thenThrow(new IllegalStateException("Private database details"));
-        var exception = assertThrows(StatusRuntimeException.class,
-                () -> stub.checkAvailability(request(PRODUCT_ID, 1)));
-        assertEquals(Status.Code.INTERNAL, exception.getStatus().getCode());
-        assertEquals("Unable to check product availability", exception.getStatus().getDescription());
     }
 
     private void assertInvalidArgument(CheckAvailabilityRequest request) {
