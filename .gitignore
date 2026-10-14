@@ -1,4 +1,5 @@
 HELP.md
+ORDER_FLOW.md
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -31,3 +32,35 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Java build output ###
+*.class
+out/
+
+### Logs and JVM diagnostics ###
+*.log
+logs/
+*.hprof
+*.jfr
+
+### Local environment and configuration ###
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+application-local.yml
+application-local.yaml
+application-local.properties
+
+### Local H2 databases ###
+*.mv.db
+*.trace.db
+
+### OS and editor temporary files ###
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
