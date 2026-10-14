@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: products
       POSTGRES_USER: ${DB_USERNAME:-microservices}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "127.0.0.1:${INVENTORY_DB_PORT:-5432}:5432"
     volumes:
@@ -24,7 +24,7 @@ services:
     environment:
       POSTGRES_DB: order_service
       POSTGRES_USER: ${DB_USERNAME:-microservices}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "127.0.0.1:${ORDER_DB_PORT:-5433}:5432"
     volumes:
@@ -42,7 +42,7 @@ services:
     environment:
       POSTGRES_DB: notifications
       POSTGRES_USER: ${DB_USERNAME:-microservices}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "127.0.0.1:${NOTIFICATION_DB_PORT:-5434}:5432"
     volumes:
@@ -96,7 +96,7 @@ services:
       GRPC_SERVER_PORT: 9090
       DB_URL: jdbc:postgresql://inventory-db:5432/products
       DB_USERNAME: ${DB_USERNAME:-microservices}
-      DB_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
     ports:
       - "127.0.0.1:${INVENTORY_HTTP_PORT:-8080}:8080"
       - "127.0.0.1:${INVENTORY_GRPC_PORT:-9090}:9090"
@@ -119,7 +119,7 @@ services:
       SERVER_PORT: 8081
       DB_URL: jdbc:postgresql://order-db:5432/order_service
       DB_USERNAME: ${DB_USERNAME:-microservices}
-      DB_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Copy .env.example to .env and set JWT_SECRET_BASE64}
       INVENTORY_GRPC_TARGET: inventory-service:9090
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
@@ -149,7 +149,7 @@ services:
       SERVER_PORT: 8082
       DB_URL: jdbc:postgresql://notification-db:5432/notifications
       DB_USERNAME: ${DB_USERNAME:-microservices}
-      DB_PASSWORD: ${DB_PASSWORD:?Copy .env.example to .env and set DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       ORDER_CREATED_TOPIC: ${ORDER_CREATED_TOPIC:-orders.created}
       ORDER_CONSUMER_GROUP: ${ORDER_CONSUMER_GROUP:-notification-service}
