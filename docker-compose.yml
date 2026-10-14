@@ -120,7 +120,7 @@ services:
       DB_URL: jdbc:postgresql://order-db:5432/order_service
       DB_USERNAME: ${DB_USERNAME:-microservices}
       DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
-      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?Copy .env.example to .env and set JWT_SECRET_BASE64}
+      JWT_SECRET_BASE64: ${JWT_SECRET_BASE64:?JWT_SECRET_BASE64 is required}
       INVENTORY_GRPC_TARGET: inventory-service:9090
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       ORDER_CREATED_TOPIC: ${ORDER_CREATED_TOPIC:-orders.created}
