@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package inventory.v1;
+
+option java_package = "ru.microservicesApp.inventoryService.grpc.generated";
+option java_multiple_files = true;
+option java_outer_classname = "InventoryProto";
+
+service InventoryService {
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+}
+
+message CheckAvailabilityRequest {
+  string product_id = 1;
+  int32 quantity = 2;
+}
+
+message CheckAvailabilityResponse {
+  bool available = 1;
+  string price = 2;
+  string sale = 3;
+}

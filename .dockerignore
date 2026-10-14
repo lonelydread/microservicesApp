@@ -1,0 +1,14 @@
+.git
+.idea
+.vscode
+.agents
+.codex
+.aws
+**/target
+**/src/test
+**/*.log
+**/*.hprof
+**/*.jfr
+.env
+.env.*
+**/application-local.*

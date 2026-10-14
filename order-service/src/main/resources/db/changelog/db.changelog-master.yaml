@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: 001-create-users.sql
+      relativeToChangelogFile: true
+  - include:
+      file: 002-create-user-roles.sql
+      relativeToChangelogFile: true

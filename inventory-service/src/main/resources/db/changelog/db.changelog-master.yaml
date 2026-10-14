@@ -1,0 +1,7 @@
+databaseChangeLog:
+  - include:
+      file: 001-create-products.sql
+      relativeToChangelogFile: true
+  - include:
+      file: 002-add-product-sale.sql
+      relativeToChangelogFile: true

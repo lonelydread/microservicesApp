@@ -1,0 +1,67 @@
+HELP.md
+ORDER_FLOW.md
+DOCKER.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Java build output ###
+*.class
+out/
+
+### Logs and JVM diagnostics ###
+*.log
+logs/
+*.hprof
+*.jfr
+
+### Local environment and configuration ###
+.env
+.env.*
+.env.example
+!.env.sample
+!.env.template
+application-local.yml
+application-local.yaml
+application-local.properties
+
+### Local H2 databases ###
+*.mv.db
+*.trace.db
+
+### OS and editor temporary files ###
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
