@@ -100,16 +100,18 @@ class AuthUserFlowIntegrationTests {
     }
 
     @Test
-    void invalidRegistrationAndOversizedUtf8PasswordsNeverReachPersistence() throws Exception {
+    void invalidRegistrationAndPasswordsOutsideLengthLimitsNeverReachPersistence() throws Exception {
         for (var payload : List.of(
                 Map.of("username", "", "email", "alice@example.com", "password", "secret-password"),
                 Map.of("username", "alice", "email", "not-an-email", "password", "secret-password"),
-                Map.of("username", "alice", "email", "alice@example.com", "password", "пароль".repeat(7)))) {
+                Map.of("username", "alice", "email", "alice@example.com", "password", "a".repeat(7)),
+                Map.of("username", "alice", "email", "alice@example.com", "password", "a".repeat(25)),
+                Map.of("username", "alice", "email", "alice@example.com", "password", "я".repeat(25)))) {
             mvc.perform(post("/auth/reg").contentType(MediaType.APPLICATION_JSON)
                             .content(json.writeValueAsString(payload))).andExpect(status().isBadRequest()).andExpect(content().string(""));
         }
         assertEquals(0, repository.count());
-        String boundaryPassword = "я".repeat(36);
+        String boundaryPassword = "漢".repeat(24);
         register("boundary", "boundary@example.com", boundaryPassword);
         login("boundary", boundaryPassword);
         mvc.perform(post("/auth/reg").contentType(MediaType.APPLICATION_JSON)
@@ -133,6 +135,11 @@ class AuthUserFlowIntegrationTests {
                                 "initial-password", List.of("ROLE_USER", "ROLE_ADMIN"))))
                 .andExpect(status().isOk());
         User saved = repository.findByUsername("managed").orElseThrow();
+        mvc.perform(put("/api/users/{id}", saved.getId()).header("Authorization", bearer(admin))
+                        .contentType(MediaType.APPLICATION_JSON).content(userBody("invalid-update", "new@example.com",
+                                "a".repeat(25), List.of("ROLE_USER"))))
+                .andExpect(status().isBadRequest()).andExpect(content().string(""));
+        assertEquals("managed", repository.findById(saved.getId()).orElseThrow().getUsername());
         assertEquals(2, roleCount(saved.getId()));
         for (List<String> roles : List.of(List.<String>of(), List.of("ROLE_UNKNOWN"))) {
             mvc.perform(put("/api/users/{id}", saved.getId()).header("Authorization", bearer(admin))
@@ -236,7 +243,7 @@ class AuthUserFlowIntegrationTests {
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     void authenticationRequestsDoNotLeakSecretsIntoLogs(CapturedOutput output) throws Exception {
-        String password = "log-secret-password-75fbfba6";
+        String password = "log-secret-75fbfba6";
         String refreshToken = "log-secret-refresh-8f98ff8e";
         for (Object request : List.of(
                 new LoginRequest("log-user", password),
