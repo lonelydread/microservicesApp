@@ -1,7 +1,6 @@
 HELP.md
 ORDER_FLOW.md
 DOCKER.md
-.env.example
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -48,7 +47,7 @@ logs/
 ### Local environment and configuration ###
 .env
 .env.*
-!.env.example
+.env.example
 !.env.sample
 !.env.template
 application-local.yml
