@@ -31,6 +31,15 @@
 	</properties>
 	<dependencies>
         <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-liquibase</artifactId>
+        </dependency>
+        <dependency>
             <groupId>ru.microservicesApp</groupId>
             <artifactId>grpc-contract</artifactId>
             <version>0.0.1-SNAPSHOT</version>
