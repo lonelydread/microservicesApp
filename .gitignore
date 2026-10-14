@@ -1,5 +1,7 @@
 HELP.md
 ORDER_FLOW.md
+DOCKER.md
+.env.example
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
